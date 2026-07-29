@@ -1,25 +1,59 @@
-# Lab 4 — Robotics and Simulation
+# Lab 4：概率定位、反馈控制与运动规划
 
-## Topics
+这一实验要求在连续物理环境中控制 Pacman 完成移动。与网格搜索不同，智能体不能瞬间跳到相邻格点，而要面对位置不确定性、速度、惯性、碰撞和路径跟踪误差。
 
-- Particle-filter localization and resampling
-- PD feedback control
-- RRT motion planning
-- Collision checking and waypoint following
+## Part 1：粒子滤波定位
 
-## Public implementation
+我用一组带权粒子近似 Pacman 位姿的概率分布：
 
-[`src/ai_labs/robotics.py`](../src/ai_labs/robotics.py) contains independent,
-framework-neutral implementations of:
+1. 在无碰撞区域均匀初始化粒子；
+2. 根据移动距离和转角执行状态转移；
+3. 比较粒子的模拟传感器读数与真实观测；
+4. 使用指数衰减函数计算权重；
+5. 按权重重采样并加入位置、朝向噪声；
+6. 选取最高权重粒子作为当前估计。
 
-- systematic particle resampling;
-- a stateful PD controller;
-- a collision-aware RRT planner.
+实现中特别处理了墙体碰撞、无效权重和局部扰动连续失败等情况。粒子滤波的意义在于：它不强迫系统只保留一个“确定位置”，而是用有限样本近似整个后验分布。
 
-Tests are in [`tests/test_robotics.py`](../tests/test_robotics.py).
+## Part 2：PD 反馈控制
 
-## Key takeaway
+控制器根据位置误差和当前速度计算作用力：
 
-The lab connects three layers of an autonomous system: localization estimates
-the state, planning proposes a feasible route, and feedback control turns the
-route into stable motion.
+```text
+F = kp · (target_position - current_position) - kd · current_velocity
+```
+
+比例项推动智能体接近目标，微分项抑制过快运动和振荡。这个实验让我看到，规划器给出的几何路径并不能直接执行；控制器必须持续读取当前状态，并用反馈修正实际轨迹。
+
+## Part 3：RRT-Connect 路径规划
+
+我实现的是带工程增强的双向 RRT-Connect：
+
+- 从起点树和终点树交替扩展；
+- 混合全局随机采样、目标采样和目标附近采样；
+- 每次扩展前进行点碰撞与线段碰撞检测；
+- 一棵树扩展后，让另一棵树贪心连接新节点；
+- 两树相遇后合并路径；
+- 对原始路径做有限距离的可见性平滑。
+
+相比单向 RRT，双向增长通常更容易在连续空间中建立连接；目标偏置则提高了搜索效率，同时保留随机探索能力。
+
+## 路径跟踪与异常处理
+
+物理仿真中，“找到一条无碰撞折线”还不等于任务完成。我进一步加入：
+
+- waypoint 到达判定，而不是按固定帧数切换目标；
+- 有限前视，避免 PD 控制器被远处目标拉向墙体；
+- 当前点到终点可直达时直接简化路径；
+- 贴墙状态下先寻找附近安全点；
+- 路径不可见或长时间没有接近目标时触发重规划；
+- 重规划冷却时间，防止每帧重复构树。
+
+这些处理体现了 planning 与 control 的接口问题：路径应当不仅几何可行，还要能够被有惯性的控制对象稳定跟踪。
+
+## 我从本实验形成的理解
+
+- Localization 回答“我在哪里”，Planning 回答“应该怎么走”，Control 回答“怎样把路径变成动作”。
+- 概率定位必须承认传感器和运动模型存在噪声。
+- 采样规划适合高维或连续空间，但需要碰撞检测、采样策略和终止条件共同保证实用性。
+- AI 系统的可靠性往往来自算法之外的边界处理、失败恢复和闭环反馈。
