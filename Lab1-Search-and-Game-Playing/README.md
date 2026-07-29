@@ -1,25 +1,56 @@
-# Lab 1 — Search and Game Playing
+# Lab 1：搜索、启发式与博弈决策
 
-## Topics
+这一实验以 Pacman 环境为载体，分为经典搜索和多智能体博弈两部分。我的重点不是记住算法模板，而是理解如何把问题表示成状态空间，以及不同展开策略为什么会产生不同结果。
 
-- Depth-first search and breadth-first search
-- Uniform-cost search and A* search
-- Heuristic design
-- Minimax, alpha–beta pruning and Monte Carlo tree search
+## Part 1：经典搜索
 
-## Public implementation
+### Q1–Q4：DFS、BFS、UCS 与 A*
 
-The reusable search implementation is in
-[`src/ai_labs/search.py`](../src/ai_labs/search.py), with tests in
-[`tests/test_search.py`](../tests/test_search.py).
+我实现了四类图搜索：
 
-The original lab used the UC Berkeley Pacman framework. Its license explicitly
-prohibits publishing solutions, so the submitted Pacman files are not included.
-The public implementation uses a new generic `SearchProblem` interface and
-independent code.
+- DFS：使用栈，优先沿当前分支深入；
+- BFS：使用队列，保证单位边权图中的最短步数；
+- UCS：按照累计路径代价 `g(n)` 展开；
+- A*：按照 `f(n) = g(n) + h(n)` 同时考虑已付出的代价和剩余代价估计。
 
-## Key takeaway
+实现中的一个关键点是 visited 的维护时机。BFS 在节点入队时判重可以减少重复扩展；UCS/A* 则需要关注到达同一状态的累计代价，因为后来发现的路径可能更便宜。对于 `(当前位置, 已访问角点列表)` 这样的复合状态，我将可变部分转换为可哈希表示，才能可靠判重。
 
-For BFS/DFS, a state can usually be marked as discovered when inserted into the
-frontier. UCS and A* need a best-known-cost map instead: a newly discovered
-cheaper path must be allowed to replace the old one.
+### Q5–Q6：角点问题与启发式函数
+
+我将状态设计为：
+
+```text
+(Pacman 当前坐标, 已访问角点集合)
+```
+
+启发式函数根据尚未访问角点的数量，估计“当前位置到某个角点 + 角点之间连接”的剩余代价。这里真正需要考虑的是 admissible 与 consistent：启发值要提供足够信息来减少扩展，但不能高估真实最短代价，否则 A* 的最优性可能被破坏。
+
+### 未完成部分
+
+`foodHeuristic` 和“寻找最近食物”对应函数仍保留课程骨架中的未完成状态。README 明确写出这一点，是为了让仓库准确反映我的实际完成度。
+
+## Part 2：多智能体博弈
+
+### Minimax 与 Alpha-Beta 剪枝
+
+我实现了 Pacman 与多个 Ghost 轮流行动的递归搜索。Pacman 选择最大化评价值的动作，Ghost 选择最小化评价值的动作；当所有智能体完成一轮后才增加搜索深度。
+
+Alpha-Beta 在不改变 Minimax 最终决策的情况下，用上下界跳过不可能影响结果的子树。我对它的理解是：剪枝不是近似，而是利用已经掌握的最优上下界，证明某些分支无需继续计算。
+
+### Monte Carlo Tree Search
+
+我实现了完整的 MCTS 四阶段：
+
+1. Selection：使用 UCT 在探索和利用之间权衡；
+2. Expansion：扩展尚未尝试的合法动作；
+3. Simulation：从新节点向后模拟；
+4. Backpropagation：沿父节点链更新访问次数和累计回报。
+
+评价函数综合考虑剩余食物和胶囊、最近食物距离、Ghost 距离以及胜负状态。相比固定深度的 Minimax，MCTS 用采样把算力集中到更有希望的分支，更适合分支因子大、无法穷举的决策问题。
+
+## 我从本实验形成的理解
+
+- 搜索算法首先是“问题表示”，其次才是 frontier 的选择。
+- 启发式函数是在正确性约束下向算法注入领域知识。
+- Minimax 假设对手理性且采用最坏情况；MCTS 则用统计采样近似长期价值。
+- 同一个游戏环境可以同时体现确定性规划、对抗搜索和基于采样的决策三种 AI 范式。
