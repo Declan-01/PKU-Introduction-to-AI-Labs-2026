@@ -1,62 +1,63 @@
-# PKU Introduction to Artificial Intelligence — Lab Portfolio (2026)
+# 北京大学《人工智能引论》课程实验（2026 春）
 
-这是我在北京大学《人工智能引论》课程实验基础上整理的个人作品集。仓库不直接发布课程答案，而是将实验中练习的核心算法重新实现为可独立运行、可测试的通用模块。
+这是我在北京大学《人工智能引论》课程中完成的实验记录。仓库保留各实验的原始作答源码，内容覆盖经典搜索、博弈决策、机器学习与神经网络、自然语言处理、LLM Agent、概率定位、反馈控制和运动规划。
 
-## What this repository demonstrates
+我希望这份仓库不仅展示“代码能运行”，还记录我对算法为什么这样设计、不同方法之间如何联系，以及工程实现会遇到什么问题的理解。
 
-| Module | Topics | What I implemented |
-|---|---|---|
-| Search & game playing | DFS, BFS, UCS, A*, adversarial search | Generic graph-search interfaces, path reconstruction, cost-aware search |
-| Machine learning from scratch | Logistic regression, numerical stability, gradient descent | NumPy binary classifier with L2 regularization and stable sigmoid |
-| NLP & LLM agents | Naive Bayes, TF–IDF retrieval, prompt-based control | Text classification, retrieval ranking and safe API-integration design |
-| Robotics | Particle filtering, PD control, RRT planning | Resampling, feedback control and collision-aware sampling-based planning |
+> 说明：仓库不包含课程数据集、评测脚本、模型权重和 API Key。部分代码依赖课程提供的框架，不能脱离原实验环境直接运行。
 
-## Repository structure
+## 实验概览
+
+| 实验 | 主题 | 我的主要实现 | 对应的 AI 能力 |
+|---|---|---|---|
+| [Lab 1](./Lab1-Search-and-Game-Playing/) | 搜索与博弈 | DFS、BFS、UCS、A*、角点启发式、Minimax、Alpha-Beta、MCTS | 状态空间建模、启发式设计、序贯决策 |
+| [Lab 2](./Lab2-Machine-Learning-from-Scratch/) | 从零实现机器学习 | 逻辑回归、决策树、随机森林、计算图、反向传播、MLP、CNN | 监督学习、优化、自动微分、表示学习 |
+| [Lab 3](./Lab3-NLP-and-LLM-Agent/) | NLP 与 LLM Agent | 朴素贝叶斯、词向量、Attention、TF-IDF 问答、LLM 游戏决策 | 概率文本建模、检索、注意力、Agent |
+| [Lab 4](./Lab4-Robotics-and-Simulation/) | 定位、控制与规划 | 粒子滤波、PD 控制、双向 RRT-Connect、路径跟踪与重规划 | 概率推断、反馈控制、采样规划 |
+
+## 我认为最有价值的代码亮点
+
+### 1. 不只调用算法，而是理解算法的数据结构
+
+在 Lab 1 中，我分别使用栈、队列和优先队列实现不同搜索策略，并处理 A* 中“当前位置 + 已访问目标集合”这类复合状态。由此我理解到：DFS、BFS、UCS 和 A* 的核心差别，不只是换一个容器，而是以什么顺序展开状态、何时判重，以及是否允许更低代价的路径更新已有状态。
+
+### 2. 从公式走到可训练的模型
+
+在 Lab 2 中，我从逻辑回归的损失和解析梯度开始，继续实现信息熵、信息增益率、Gini 指数、随机森林，再搭建自己的计算图与反向传播节点。自动微分部分包括 Linear、激活函数、BatchNorm、Dropout、Softmax/NLLLoss，以及基于 `im2col` 思路实现的 Conv2d 和带梯度回传的 MaxPool2d。
+
+最终的手写 CNN 使用“卷积—池化—全连接”结构，并加入平移、旋转和缩放数据增强。这让我看到，神经网络效果并不只由模型名称决定，还依赖张量形状、梯度是否正确、数值稳定性、正则化和训练数据分布。
+
+### 3. 把传统 NLP 与现代 LLM 放在同一条脉络中理解
+
+Lab 3 从可解释的朴素贝叶斯和 TF-IDF 检索开始，再进入词向量、Attention 和 LLM Agent。朴素贝叶斯通过拉普拉斯平滑与对数概率避免零概率和下溢；检索问答先选文档，再按匹配词 IDF 与 query term density 选择句子；Attention 模型将变长文本转为定长向量序列并完成分类。
+
+LLM 部分则把游戏状态序列化为文本，让模型在合法动作集合中进行决策。我由此认识到：LLM Agent 不等于“接一个 API”，还需要清晰的状态表示、输出约束、动作校验和密钥隔离。
+
+### 4. 将感知、规划和控制连成闭环
+
+Lab 4 中，粒子滤波用传感器误差计算权重并重采样，以近似表示位置的不确定性；RRT-Connect 在连续空间中寻找无碰撞路径；PD 控制器再将路径点转化为力。为了适应物理仿真，我还实现了目标偏置采样、路径平滑、有限前视、贴墙逃离、卡住检测和低频重规划。
+
+这部分让我理解到，机器人系统不是三个孤立算法：定位误差会影响规划，规划路径必须考虑控制器能否跟踪，而控制中的偏差又会触发重新规划。
+
+## 仓库结构
 
 ```text
 .
-├── Lab1-Search-and-Game-Playing/
-├── Lab2-Machine-Learning-from-Scratch/
-├── Lab3-NLP-and-LLM-Agent/
-├── Lab4-Robotics-and-Simulation/
-├── docs/                              # Detailed learning notes
-├── examples/                          # One-command demonstration
-├── src/ai_labs/                       # Independent implementations
-└── tests/                             # Deterministic unit tests
+├── Lab1-Search-and-Game-Playing/       # 搜索、启发式与多智能体博弈
+├── Lab2-Machine-Learning-from-Scratch/ # 传统 ML、自动微分与 CNN
+├── Lab3-NLP-and-LLM-Agent/             # 文本分类、检索、Attention 与 Agent
+├── Lab4-Robotics-and-Simulation/       # 定位、控制与运动规划
+├── docs/                               # 总结性学习笔记
+├── src/ai_labs/                        # 可独立运行的简化演示实现
+├── tests/                              # 演示实现的测试
+└── examples/                           # 演示入口
 ```
 
-## Quick start
+每个 Lab 目录的 README 都给出了更细的题目拆解、实现重点和我的理解。
 
-Requirements: Python 3.10+ and NumPy.
+## 安全与学术说明
 
-```bash
-python -m pip install -e .
-python -m unittest discover -s tests -v
-python examples/run_showcase.py
-```
-
-## Selected technical takeaways
-
-- Search algorithms are unified by changing only the frontier discipline and priority function.
-- Stable numerical implementations matter: clipping or branch-wise sigmoid evaluation avoids overflow.
-- TF–IDF and Naive Bayes remain useful transparent baselines for understanding modern NLP systems.
-- Robotics algorithms must model uncertainty and physical constraints, not only optimize an abstract objective.
-- Reproducibility, tests and scope disclosure are part of an engineering result—not afterthoughts.
-
-## Academic-integrity and attribution notice
-
-The original coursework used teaching frameworks including the UC Berkeley Pacman AI projects. Their license permits educational use but explicitly prohibits publishing solutions. Therefore this repository:
-
-- does **not** contain official handouts, autograders, datasets or solution files;
-- does **not** contain student identifiers, grades, model weights or API credentials;
-- contains independent implementations with APIs different from the coursework;
-- is intended as a portfolio and learning record, not as an answer bank.
-
-Conceptual attribution:
-
-- [UC Berkeley Pacman Projects](https://ai.berkeley.edu/project_overview.html)
-- Peking University, *Introduction to Artificial Intelligence* course, Spring 2026
-
-## License
-
-The independent code in this repository is released under the MIT License. Course materials and third-party projects remain under their respective terms.
+- 原始作答代码按课程要求公开，仅用于个人学习记录与能力展示。
+- 仓库未上传 API Key、`.env`、数据集、模型权重、隐藏测试或评测器。
+- 第三方课程框架与数据仍遵循其原有许可；本仓库的 MIT License 仅适用于我有权发布的代码与文档。
+- 请勿将本仓库作为作业答案直接提交。
