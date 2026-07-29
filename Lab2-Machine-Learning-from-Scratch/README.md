@@ -1,27 +1,72 @@
-# Lab 2 — Machine Learning from Scratch
+# Lab 2：从零实现机器学习与神经网络
 
-## Topics
+这一实验从传统机器学习一路推进到自动微分和卷积神经网络。相比直接调用框架，我需要自己处理损失函数、梯度、张量形状、正则化和训练流程，因此能够看到模型训练背后的完整计算过程。
 
-- Logistic regression and stable cross-entropy optimization
-- Decision trees and random forests
-- Forward/backward propagation with NumPy
-- MLP/CNN experiments and hyperparameter tuning
+## Q1：逻辑回归
 
-## Public implementation
+我使用 NumPy 实现二分类逻辑回归：
 
-[`src/ai_labs/ml.py`](../src/ai_labs/ml.py) contains an independent binary
-logistic-regression implementation with:
+```text
+z = Xw + b
+p = sigmoid(y · z)
+L = -log(p)
+```
 
-- numerically stable sigmoid evaluation;
-- vectorized gradients;
-- L2 regularization;
-- convergence tracking;
-- deterministic tests.
+代码中手动推导并实现 `w` 与 `b` 的梯度，并加入 L2 正则化。这里的重点是使用向量化计算完成一批样本的前向和反向传播，同时在对数运算中加入很小的 `EPS`，避免出现 `log(0)`。
 
-See [`tests/test_ml_nlp.py`](../tests/test_ml_nlp.py).
+## Q2：决策树与随机森林
 
-## Key takeaway
+决策树部分实现了：
 
-Correct formulas are only the beginning. Shape discipline, numerical stability,
-initialization, regularization and reproducible evaluation decide whether a
-model trains reliably.
+- 信息熵；
+- 信息增益；
+- 信息增益率；
+- Gini 指数；
+- 递归建树与停止条件；
+- 测试时遇到未见分支的多数类回退。
+
+随机森林在多棵决策树之间引入样本随机性和特征随机性，并通过多数投票输出结果。这个实验让我直观看到 Bagging 的作用：单棵树容易受训练样本影响，而多个有差异的弱相关模型可以降低整体方差。
+
+## Q3：计算图、反向传播与 MLP
+
+我实现并使用了自己的 `Graph` 与计算节点，包括：
+
+- Linear、ReLU、Sigmoid、Tanh；
+- BatchNorm、LayerNorm、Dropout；
+- Softmax、LogSoftmax、NLLLoss、CrossEntropy；
+- 参数更新以及 L1/L2 正则化；
+- 训练模式与推理模式切换。
+
+MLP 结构为：
+
+```text
+784 → Linear(256) → BatchNorm → ReLU
+    → Linear(10) → LogSoftmax → NLLLoss
+```
+
+这部分最重要的收获是链式法则如何在计算图中落地：每个节点只需保存前向传播所需的中间量，并根据上游梯度计算输入梯度和参数梯度；图再按反向拓扑顺序完成整体反向传播。
+
+## Q4：手写 CNN 与数据增强
+
+为了进一步提升 MNIST 分类能力，我在计算图中实现了 Conv2d、MaxPool2d、Flatten 和 InputNorm。卷积使用类似 `im2col` 的方式把局部感受野转换为矩阵运算；最大池化在前向阶段保存最大值位置，反向阶段再把梯度散射回对应元素。
+
+最终网络为：
+
+```text
+InputNorm
+→ Conv2d(1, 8, 3, padding=1) → ReLU
+→ MaxPool2d(2)
+→ Flatten
+→ Linear(8×14×14, 256) → ReLU → Dropout(0.2)
+→ Linear(256, 128) → ReLU
+→ Linear(128, 10) → LogSoftmax → NLLLoss
+```
+
+训练时，我加入随机平移、旋转、缩放及其组合，并控制增强样本在 batch 中的比例。这不是简单“把网络加深”，而是在模型容量、训练时间、过拟合和数据分布之间做取舍。
+
+## 我从本实验形成的理解
+
+- 传统模型和神经网络都在学习“输入到预测”的映射，差别主要在假设空间、特征表示与优化方式。
+- 自动微分把复杂模型的求导分解为局部 Jacobian 与链式法则，使搭建新网络成为组合节点。
+- 深度学习工程中的错误经常不是公式错，而是维度、广播、训练/推理状态或数值稳定性出错。
+- 数据增强向模型编码了任务中的不变性：数字平移或轻微旋转后，类别通常不应改变。
