@@ -1,25 +1,57 @@
-# Lab 3 — NLP and an LLM Agent
+# Lab 3：自然语言处理、Attention 与 LLM Agent
 
-## Topics
+这一实验把经典概率模型、信息检索、神经网络和大语言模型放在同一个 NLP 任务链中。我可以由此比较：不同方法如何表示文本、如何利用语料，以及它们的能力边界分别在哪里。
 
-- Multinomial Naive Bayes sentiment classification
-- Tokenization and word-vector processing
-- TF–IDF document retrieval
-- Attention-related numerical operations
-- Prompt-based action selection with an LLM API
+## Part 1：文本分类与检索问答
 
-## Public implementation
+### 朴素贝叶斯情感分类
 
-[`src/ai_labs/nlp.py`](../src/ai_labs/nlp.py) provides:
+我统计正负样本中的词频，在多项式朴素贝叶斯假设下计算类别后验。实现中使用：
 
-- a transparent multinomial Naive Bayes classifier;
-- a TF–IDF retriever with deterministic ranking;
-- a small tokenizer suitable for the examples.
+- 拉普拉斯平滑，避免未见词导致条件概率为零；
+- 对数概率，将概率连乘变为对数相加，降低数值下溢风险；
+- 类别先验，反映正负训练样本数量差异；
+- 词表过滤，忽略训练阶段完全未见的词。
 
-No API key, external call, course dataset or submitted answer file is included.
+这个模型结构简单，但它清楚地展示了“生成式分类”的思路：先建模每个类别生成文本的概率，再选择更可能的类别。
 
-## Key takeaway
+### 词向量与 Attention 分类
 
-An LLM component needs a systems boundary: credentials belong in environment
-variables, output formats require validation, and proposed actions must be
-checked against the environment's legal-action set.
+Embedding 模块将 token 映射为 100 维预训练词向量，并通过截断和零填充得到固定长度序列。分类网络由 Attention、残差线性层、归一化、池化和分类头组成：
+
+```text
+Embedding
+→ Attention → ReLU → LayerNorm
+→ ResLinear → ReLU → LayerNorm
+→ Mean Pooling
+→ Linear → LogSoftmax
+```
+
+这里我理解到，词向量解决的是离散 token 的连续表示问题，Attention 则让每个位置根据其他位置的信息动态更新表示；Mean Pooling 再把序列级表示压缩为句子级向量。
+
+### TF-IDF 检索式问答
+
+问答流程分为两级：
+
+1. 对查询词计算 TF-IDF 分数，选择最相关文档；
+2. 在文档内部按匹配词的 IDF 之和选择句子；分数相同时，再比较 query term density。
+
+相比端到端生成答案，这种方法完全可解释：每个结果都可以追溯到匹配词、词频和逆文档频率。它也让我理解了现代 RAG 的一个基本思想——先检索相关上下文，再进行更复杂的回答或推理。
+
+## Part 2：LLM 驱动的游戏 Agent
+
+我把迷宫、角色位置和合法动作整理为文本状态，交给 OpenAI-compatible API 选择下一步动作。这里的技术重点并不是请求接口本身，而是 Agent 的边界设计：
+
+- 环境状态必须以清晰、紧凑的方式提供给模型；
+- 模型输出需要约束为环境能够执行的动作；
+- API Key 不写入公开代码；
+- 语言模型负责高层决策，环境仍负责状态转移与合法性。
+
+公开仓库只保留不含密钥的作答源码；真实凭证、调用入口和运行日志均未上传。
+
+## 我从本实验形成的理解
+
+- 朴素贝叶斯依赖条件独立假设，表达能力有限，但数据需求低且可解释。
+- TF-IDF 关注词的区分度，而 Attention 学习词之间与上下文相关的交互。
+- LLM 能处理更开放的语言与决策问题，但可靠系统仍需要检索、约束、验证和环境反馈。
+- 从 TF-IDF 到 RAG、从状态文本到 Agent，现代系统并没有抛弃传统方法，而是把它们组合进更大的流程。
