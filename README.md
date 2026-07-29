@@ -46,11 +46,7 @@ Lab 4 中，粒子滤波用传感器误差计算权重并重采样，以近似�
 ├── Lab1-Search-and-Game-Playing/       # 搜索、启发式与多智能体博弈
 ├── Lab2-Machine-Learning-from-Scratch/ # 传统 ML、自动微分与 CNN
 ├── Lab3-NLP-and-LLM-Agent/             # 文本分类、检索、Attention 与 Agent
-├── Lab4-Robotics-and-Simulation/       # 定位、控制与运动规划
-├── docs/                               # 总结性学习笔记
-├── src/ai_labs/                        # 可独立运行的简化演示实现
-├── tests/                              # 演示实现的测试
-└── examples/                           # 演示入口
+└── Lab4-Robotics-and-Simulation/       # 定位、控制与运动规划
 ```
 
 每个 Lab 目录的 README 都给出了更细的题目拆解、实现重点和我的理解。
